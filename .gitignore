@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Local SecurOps data
+.securops/
+enrollment-tracking.json
+security-dashboard.html
+security-summary.md
+ai-fix-report.md
+
+# Reports (generated, not committed)
+odc-reports/
+zap_report.html
+zap_report.json
+trufflehog-results.json
+*.sarif
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/

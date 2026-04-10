@@ -1,0 +1,55 @@
+Subject: 🛡️ Action Required: Enable SecurOps Security Scanning on Your Projects
+
+Hi Team,
+
+We're rolling out SecurOps Hybrid — our company-wide automated security scanning pipeline. This protects every project with 7 industry-standard security tools that run automatically on every commit and push.
+
+🔧 What You Need to Do (2 minutes):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Open Terminal
+2. cd into your project repo
+3. Run this single command:
+
+   bash <(curl -s https://raw.githubusercontent.com/YOUR_ORG/secureops-config-hybrid-approch/main/scripts/onboard.sh)
+
+4. Commit and push the security files:
+   git commit -m "feat: add SecurOps Hybrid security scanning"
+   git push
+
+That's it! The script handles everything automatically.
+
+🛡️ What Gets Installed:
+━━━━━━━━━━━━━━━━━━━━━━━
+• 🔐 Gitleaks — blocks 130+ secret patterns (AWS keys, tokens, passwords)
+• 🔑 TruffleHog — verifies if detected secrets are real (CI only)
+• 🔍 Semgrep — catches OWASP Top 10 vulnerabilities + mobile-specific issues
+• 🛡️ Trivy — scans all dependencies for known CVEs
+• 🌐 Nuclei — fast DAST scanning for exposed configs
+• 🕷️ OWASP ZAP — deep API penetration testing (CI only)
+• 🏗️ Checkov — scans Dockerfiles, Terraform, and CI configs
+• 🤖 Claude AI — automatically generates fix suggestions
+
+🚀 How It Works:
+━━━━━━━━━━━━━━━━
+• On COMMIT: Gitleaks + Semgrep scan your changes (~3 seconds)
+• On PUSH: Trivy scans your dependencies
+• On PR/PUSH to main: Full 7-tool CI pipeline runs (~5 minutes)
+• On FAILURE: Claude AI creates a GitHub Issue with specific fixes
+
+📊 Visibility:
+━━━━━━━━━━━━━━
+• PR comments show scan results table
+• GitHub Security tab shows all findings
+• HTML dashboard tracks team enrollment
+
+❓ Need Help?
+━━━━━━━━━━━━━
+• Slack: #security-help
+• Email: hardikdoshi@devrepublic.nl
+• Documentation: [link to internal docs]
+
+Please onboard all your active projects by [DATE].
+
+Thank you for helping keep our codebase secure! 🛡️
+
+— Security Team
