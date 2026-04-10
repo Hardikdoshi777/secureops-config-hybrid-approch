@@ -8,15 +8,21 @@ Merges Approach A (TruffleHog, OWASP ZAP, mobile SAST) with Approach B (Gitleaks
 
 ## Quick Start (2 minutes)
 
+### 🍎 Mac / Linux
 ```bash
-# From ANY project repo:
 cd /path/to/your-project
 bash <(curl -s https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard.sh)
 ```
 
+### 🪟 Windows (PowerShell)
+```powershell
+cd C:\path\to\your-project
+irm https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard_windows.ps1 | iex
+```
+
 This single command:
-✅ Detects your OS (macOS Intel/M1, Linux, Windows)  
-✅ Installs pre-commit + gitleaks + trivy  
+✅ Detects your OS and installs tools automatically  
+✅ Installs pre-commit + gitleaks + trivy (via winget/scoop/choco on Windows)  
 ✅ Copies 9 security config files into your project  
 ✅ Installs git hooks (auto-runs on every commit)  
 ✅ Validates setup with a test secret scan  
@@ -78,7 +84,8 @@ secureops-config-hybrid-approch/
 ├── zap.conf                       ← ZAP alert thresholds (FAIL/WARN/IGNORE)
 ├── azure-pipelines.yml            ← Azure DevOps equivalent pipeline
 ├── scripts/
-│   ├── onboard.sh                 ← One-command remote setup (370 lines)
+│   ├── onboard.sh                 ← One-command setup (Mac/Linux)
+│   ├── onboard_windows.ps1        ← One-command setup (Windows PowerShell)
 │   ├── ai-auto-fix.py             ← Claude AI reads reports → creates Issues
 │   ├── generate-report.py         ← HTML dashboard + enrollment + PR comments
 │   ├── trivy-scan.sh              ← Trivy wrapper (native + Docker fallback)
@@ -123,7 +130,7 @@ The pipeline **blocks merges** if ANY of these are found:
 
 ## Support
 
-- **Slack:** #security-help
+- **Teams:** #security-help
 - **Email:** hardikdoshi@devrepublic.nl
 - **Docs:** See `docs/` folder
 

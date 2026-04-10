@@ -6,17 +6,36 @@ We're rolling out SecurOps Hybrid — our company-wide automated security scanni
 
 🔧 What You Need to Do (2 minutes):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Open Terminal
+1. Open your Terminal / PowerShell
 2. cd into your project repo
-3. Run this single command:
+3. Run the ONE command for your OS:
 
-   bash <(curl -s https://raw.githubusercontent.com/YOUR_ORG/secureops-config-hybrid-approch/main/scripts/onboard.sh)
+   ┌──────────────────────────────────────────────────────────────┐
+   │  🍎 Mac / Linux (Terminal):                                  │
+   │                                                              │
+   │  bash <(curl -s https://raw.githubusercontent.com/           │
+   │  Hardikdoshi777/secureops-config-hybrid-approch/             │
+   │  main/scripts/onboard.sh)                                    │
+   └──────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────┐
+   │  🪟 Windows (PowerShell — Run as Administrator):             │
+   │                                                              │
+   │  irm https://raw.githubusercontent.com/Hardikdoshi777/       │
+   │  secureops-config-hybrid-approch/main/scripts/               │
+   │  onboard_windows.ps1 | iex                                   │
+   └──────────────────────────────────────────────────────────────┘
 
 4. Commit and push the security files:
    git commit -m "feat: add SecurOps Hybrid security scanning"
    git push
 
-That's it! The script handles everything automatically.
+That's it! The script handles everything automatically:
+  ✅ Detects your OS (macOS Intel/M1, Linux, Windows)
+  ✅ Installs pre-commit, gitleaks, trivy
+  ✅ Copies 9 security config files
+  ✅ Installs git hooks
+  ✅ Validates setup
 
 🛡️ What Gets Installed:
 ━━━━━━━━━━━━━━━━━━━━━━━
@@ -33,7 +52,7 @@ That's it! The script handles everything automatically.
 ━━━━━━━━━━━━━━━━
 • On COMMIT: Gitleaks + Semgrep scan your changes (~3 seconds)
 • On PUSH: Trivy scans your dependencies
-• On PR/PUSH to main: Full 7-tool CI pipeline runs (~5 minutes)
+• On PR/PUSH to main: Full 7-tool CI pipeline runs (~1 minute)
 • On FAILURE: Claude AI creates a GitHub Issue with specific fixes
 
 📊 Visibility:
@@ -42,9 +61,15 @@ That's it! The script handles everything automatically.
 • GitHub Security tab shows all findings
 • HTML dashboard tracks team enrollment
 
+⚠️ Windows Prerequisites:
+━━━━━━━━━━━━━━━━━━━━━━━━
+• Git for Windows (https://git-scm.com/download/win)
+• Python 3.8+ (https://python.org — check "Add to PATH" during install)
+• PowerShell 5.1+ (built into Windows 10/11)
+
 ❓ Need Help?
 ━━━━━━━━━━━━━
-• Slack: #security-help
+• Teams: #security-help
 • Email: hardikdoshi@devrepublic.nl
 • Documentation: [link to internal docs]
 
