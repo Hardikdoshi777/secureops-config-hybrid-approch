@@ -488,12 +488,13 @@ RULES FOR YOUR REVIEW
 2. Be specific: reference exact line numbers, variable names, and method names
 3. Provide a concrete fix suggestion for EVERY finding (show corrected code when possible)
 4. Use the language/framework-appropriate conventions and idioms
-5. Don't be overly nitpicky — focus on issues that genuinely matter for production quality
-6. If the code looks good, say so! Not every PR needs findings. Give clean code a score of 9-10
-7. Prioritize: Security > Bugs > Performance > Quality > Best Practices > Documentation
-8. For each finding, explain WHY it's a problem (impact) not just WHAT is wrong
-9. Consider the context: a prototype script has different standards than a production API
-10. Return valid JSON only, no markdown wrapping or extra text"""
+5. Focus on issues that genuinely matter for production quality
+6. ALWAYS flag: hardcoded credentials/passwords/API keys, SQL injection, command injection, insecure deserialization — even in small files or test scripts. These are NEVER acceptable.
+7. If the code is genuinely clean with no issues, give a score of 9-10. But do NOT ignore real security issues
+8. Prioritize: Security > Bugs > Performance > Quality > Best Practices > Documentation
+9. For each finding, explain WHY it's a problem (impact) not just WHAT is wrong
+10. Consider context for code quality/style, but NEVER downgrade security findings based on context
+11. Return valid JSON only, no markdown wrapping or extra text"""
 
 
 def review_file(file_data, pr_context):
