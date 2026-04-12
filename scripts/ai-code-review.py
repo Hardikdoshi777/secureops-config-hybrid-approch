@@ -38,9 +38,9 @@ from datetime import datetime
 # ─────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────
-GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "").strip()
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 
 # GitHub context (set by GitHub Actions)
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
@@ -70,8 +70,8 @@ SKIP_PATTERNS = [
 # ─────────────────────────────────────────────────────────
 import time
 
-MAX_RETRIES = 2
-RETRY_DELAY = 3  # seconds
+MAX_RETRIES = 3
+RETRY_DELAY = 10  # seconds (Gemini free tier = 15 RPM, need longer backoff)
 
 def call_ai(prompt, system_prompt="", max_tokens=4096):
     """Call AI provider with retry + automatic fallback: Gemini → Groq → None"""
@@ -137,6 +137,14 @@ def _call_gemini(prompt, system_prompt, max_tokens):
             data = json.loads(resp.read().decode("utf-8"))
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             return text
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        print(f"  ⚠️  Gemini API error: {e} — {error_body[:200]}")
+        return None
     except Exception as e:
         print(f"  ⚠️  Gemini API error: {e}")
         return None
@@ -172,6 +180,14 @@ def _call_groq(prompt, system_prompt, max_tokens):
         with urllib.request.urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        print(f"  ⚠️  Groq API error: {e} — {error_body[:200]}")
+        return None
     except Exception as e:
         print(f"  ⚠️  Groq API error: {e}")
         return None
@@ -787,6 +803,13 @@ def main():
 
     provider = "Gemini" if GOOGLE_AI_API_KEY else "Groq"
     print(f"  ℹ️  AI Provider: {provider}")
+    # Debug: show which providers are configured (masked keys)
+    if GOOGLE_AI_API_KEY:
+        print(f"  ℹ️  Gemini key: {GOOGLE_AI_API_KEY[:8]}...{GOOGLE_AI_API_KEY[-4:]} (len={len(GOOGLE_AI_API_KEY)})")
+    if GROQ_API_KEY:
+        print(f"  ℹ️  Groq key: {GROQ_API_KEY[:8]}...{GROQ_API_KEY[-4:]} (len={len(GROQ_API_KEY)})")
+    else:
+        print(f"  ⚠️  Groq key: NOT SET (fallback unavailable)")
 
     # Get PR info
     pr_info = get_pr_info()

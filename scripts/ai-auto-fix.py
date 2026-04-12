@@ -39,8 +39,8 @@ MAX_FIXES_PER_RUN = 10
 # ─────────────────────────────────────────────────────────
 import time
 
-MAX_RETRIES = 2
-RETRY_DELAY = 3  # seconds
+MAX_RETRIES = 3
+RETRY_DELAY = 10  # seconds (Gemini free tier = 15 RPM, need longer backoff)
 
 def call_ai(prompt, max_tokens=1024):
     """Call AI provider with retry + automatic fallback: Gemini → Groq → None"""
