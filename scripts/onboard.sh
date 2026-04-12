@@ -39,6 +39,7 @@ FILES=(
   "scripts/trivy-scan.sh|scripts/trivy-scan.sh"
   "scripts/generate-report.py|scripts/generate-report.py"
   "scripts/ai-auto-fix.py|scripts/ai-auto-fix.py"
+  "scripts/ai-code-review.py|scripts/ai-code-review.py"
   "scripts/zap_report_check.py|scripts/zap_report_check.py"
 )
 

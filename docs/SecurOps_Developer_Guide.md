@@ -86,6 +86,54 @@ npm update vulnerable-package
 pip install --upgrade vulnerable-package
 ```
 
+## 🧠 AI Code Review (Automatic on PRs)
+
+When you create a Pull Request, our AI reviewer will automatically:
+- Post **inline comments** on problematic lines (like CodeRabbit)
+- Show a **summary table** with findings count per category
+- Apply a **Quality Gate** (pass/warning/fail)
+- Provide **one-click fixes** — click "Apply suggestion" right in the PR!
+
+**Categories checked:**
+| # | Category | What It Finds |
+|---|----------|--------------|
+| 🔒 | Security | OWASP Top 10, injection, hardcoded secrets |
+| 🐛 | Bugs | Null references, race conditions, resource leaks |
+| 🧹 | Quality | Complexity, dead code, naming, duplication |
+| ⚡ | Performance | N+1 queries, memory leaks, inefficient loops |
+| 📏 | Best Practices | Language-specific conventions |
+| 🧪 | Testing | Missing test coverage |
+| 🏗️ | Architecture | SOLID violations, API design |
+| 📝 | Documentation | Missing docs, outdated comments |
+
+## 💻 IDE Extensions (Optional, Free)
+
+Get real-time security scanning in your editor before you even commit:
+
+### VS Code
+| Extension | What It Does | Install |
+|-----------|-------------|---------|
+| **Semgrep** | Real-time SAST scanning | `ext install Semgrep.semgrep` |
+| **Trivy** | Dependency vulnerability scanning | `ext install AquaSecurity.trivy-vulnerability-scanner` |
+| **GitLens** | Git blame + secret detection | `ext install eamodio.gitlens` |
+| **SonarLint** | Code quality + code smells | `ext install SonarSource.sonarlint-vscode` |
+
+### IntelliJ / Android Studio
+| Plugin | What It Does | Install |
+|--------|-------------|---------|
+| **Semgrep** | Real-time SAST | Search "Semgrep" in Plugins |
+| **SonarLint** | Code quality + smells | Search "SonarLint" in Plugins |
+| **Snyk** | SCA + container scan | Search "Snyk" in Plugins |
+
+### How to Install (VS Code):
+```bash
+# Install all recommended extensions at once:
+code --install-extension Semgrep.semgrep
+code --install-extension AquaSecurity.trivy-vulnerability-scanner
+code --install-extension eamodio.gitlens
+code --install-extension SonarSource.sonarlint-vscode
+```
+
 ## Need an Exception?
 
 If a finding is a false positive:

@@ -3,31 +3,114 @@
 SecurOps Hybrid AI Auto-Fix Script
 File: scripts/ai-auto-fix.py
 
-Uses Claude to:
+Uses Gemini (primary) / Groq (fallback) to:
 1. Read all scan reports (Gitleaks, TruffleHog, Semgrep, Trivy, Nuclei, ZAP, Checkov)
 2. Analyze each vulnerability
 3. Generate specific code fixes
 4. Create a GitHub Issue with fixes + PR-ready patches
 
-Hybrid: Approach B base + Approach A ZAP report support
-Requires: ANTHROPIC_API_KEY secret in GitHub repo settings
+AI Providers (free, no credit card):
+  Primary:   Google AI Studio (Gemini 2.0 Flash)
+  Fallback:  Groq (Llama 3.3 70B)
+
+Requires: GOOGLE_AI_API_KEY or GROQ_API_KEY in GitHub repo secrets
 """
 
 import os
 import json
 import glob
-import anthropic
+import urllib.request
+import urllib.error
 from datetime import datetime
 
 # ─────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "")
+GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
 GITHUB_TOKEN      = os.environ.get("GITHUB_TOKEN")
 REPO              = os.environ.get("REPO", "")
 SHA               = os.environ.get("SHA", "")
 ACTOR             = os.environ.get("ACTOR", "unknown")
 MAX_FIXES_PER_RUN = 10
+
+# ─────────────────────────────────────────────────────────
+# AI PROVIDER (Gemini → Groq fallback)
+# ─────────────────────────────────────────────────────────
+import time
+
+MAX_RETRIES = 2
+RETRY_DELAY = 3  # seconds
+
+def call_ai(prompt, max_tokens=1024):
+    """Call AI provider with retry + automatic fallback: Gemini → Groq → None"""
+
+    if GOOGLE_AI_API_KEY:
+        for attempt in range(MAX_RETRIES + 1):
+            result = _call_gemini(prompt, max_tokens)
+            if result:
+                return result
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY * (attempt + 1)
+                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
+                time.sleep(wait)
+        print("  ⚠️  Gemini exhausted retries, trying Groq...")
+
+    if GROQ_API_KEY:
+        for attempt in range(MAX_RETRIES + 1):
+            result = _call_groq(prompt, max_tokens)
+            if result:
+                return result
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY * (attempt + 1)
+                print(f"  ⚠️  Groq attempt {attempt+1} failed, retrying in {wait}s...")
+                time.sleep(wait)
+
+    return "AI fix generation unavailable — no API key or provider error."
+
+
+def _call_gemini(prompt, max_tokens):
+    """Call Google AI Studio (Gemini 2.0 Flash)"""
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GOOGLE_AI_API_KEY}"
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": max_tokens}
+        }
+        req = urllib.request.Request(
+            url, data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        print(f"  ⚠️  Gemini error: {e}")
+        return None
+
+
+def _call_groq(prompt, max_tokens):
+    """Call Groq (OpenAI-compatible)"""
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2, "max_tokens": max_tokens
+        }
+        req = urllib.request.Request(
+            url, data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {GROQ_API_KEY}"
+            }, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"  ⚠️  Groq error: {e}")
+        return None
 
 # ─────────────────────────────────────────────────────────
 # HELPERS
@@ -147,7 +230,7 @@ def collect_findings():
                 "fix_hint" : r.get("info", {}).get("remediation", ""),
             })
 
-    # ── OWASP ZAP (Deep DAST) — NEW in Hybrid ───────────
+    # ── OWASP ZAP (Deep DAST) ───────────────────────────
     zap = load_report("reports/report-dast-zap/zap_report.json")
     for site in zap.get("site", [])[:2]:
         for alert in site.get("alerts", [])[:3]:
@@ -170,8 +253,8 @@ def collect_findings():
 # AI FIX GENERATION
 # ─────────────────────────────────────────────────────────
 
-def generate_fix(client, finding):
-    """Ask Claude to generate a specific fix for a finding."""
+def generate_fix(finding):
+    """Ask AI to generate a specific fix for a finding."""
     prompt = f"""You are a security engineer. Analyze this security finding and provide a concrete fix.
 
 TOOL: {finding['tool']}
@@ -195,15 +278,7 @@ Provide:
 Be specific. Show actual code changes, not generic advice.
 Format as markdown."""
 
-    try:
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=800,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception as e:
-        return f"AI fix generation failed: {e}"
+    return call_ai(prompt, max_tokens=800)
 
 # ─────────────────────────────────────────────────────────
 # GITHUB ISSUE CREATION
@@ -216,8 +291,7 @@ def create_github_issue(findings_with_fixes):
         return
 
     try:
-        import urllib.request
-
+        provider = "Gemini" if GOOGLE_AI_API_KEY else "Groq"
         timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         sha_short = SHA[:7] if SHA else "unknown"
 
@@ -226,9 +300,10 @@ def create_github_issue(findings_with_fixes):
             f"",
             f"**Commit:** `{sha_short}` | **By:** @{ACTOR} | **Time:** {timestamp}",
             f"**Pipeline:** 7-tool hybrid scan (Gitleaks + TruffleHog + Semgrep + Trivy + Nuclei + ZAP + Checkov)",
+            f"**AI Provider:** {provider}",
             f"",
             f"Found **{len(findings_with_fixes)}** issue(s) requiring attention.",
-            f"Claude has analyzed each finding and provided specific fixes below.",
+            f"AI has analyzed each finding and provided specific fixes below.",
             f"",
             f"---",
         ]
@@ -244,7 +319,7 @@ def create_github_issue(findings_with_fixes):
                 f"",
                 f"**Finding:** {finding['message']}",
                 f"",
-                f"### 🤖 Claude's Fix:",
+                f"### 🤖 AI Fix ({provider}):",
                 f"",
                 fix,
                 f"",
@@ -253,7 +328,7 @@ def create_github_issue(findings_with_fixes):
 
         body_lines += [
             f"",
-            f"*Generated by SecurOps Hybrid AI Auto-Fix using Claude | [View pipeline run](https://github.com/{REPO}/actions)*",
+            f"*Generated by SecurOps Hybrid AI Auto-Fix using {provider} | [View pipeline run](https://github.com/{REPO}/actions)*",
         ]
 
         body = "\n".join(body_lines)
@@ -290,10 +365,11 @@ def create_github_issue(findings_with_fixes):
 
 def save_fix_report(findings_with_fixes):
     """Save the AI fix report as a markdown file (always)."""
+    provider = "Gemini" if GOOGLE_AI_API_KEY else "Groq"
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         f"# 🤖 SecurOps Hybrid AI Auto-Fix Report",
-        f"Generated: {timestamp} | Commit: {SHA[:7] if SHA else 'local'}",
+        f"Generated: {timestamp} | Commit: {SHA[:7] if SHA else 'local'} | AI: {provider}",
         f"Pipeline: 7-tool hybrid scan",
         f"",
     ]
@@ -323,12 +399,13 @@ def main():
     print(f"   Pipeline: 7-tool hybrid (Gitleaks+TruffleHog+Semgrep+Trivy+Nuclei+ZAP+Checkov)")
     print()
 
-    if not ANTHROPIC_API_KEY:
-        print("⚠️  ANTHROPIC_API_KEY not set — skipping AI fixes")
-        print("   Add ANTHROPIC_API_KEY to GitHub repo secrets to enable AI fixes")
+    if not GOOGLE_AI_API_KEY and not GROQ_API_KEY:
+        print("⚠️  No AI API key configured (GOOGLE_AI_API_KEY or GROQ_API_KEY)")
+        print("   Get free key: https://aistudio.google.com/apikey")
         return
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    provider = "Gemini" if GOOGLE_AI_API_KEY else "Groq"
+    print(f"   AI Provider: {provider}")
 
     print("📊 Collecting findings from all 7 scan reports...")
     findings = collect_findings()
@@ -343,7 +420,7 @@ def main():
     findings_with_fixes = []
     for i, finding in enumerate(findings, 1):
         print(f"🔍 Analyzing issue {i}/{len(findings)}: [{finding['severity']}] {finding['type']} ({finding['tool']})")
-        fix = generate_fix(client, finding)
+        fix = generate_fix(finding)
         findings_with_fixes.append((finding, fix))
         print(f"   ✅ Fix generated")
 
@@ -355,7 +432,7 @@ def main():
     create_github_issue(findings_with_fixes)
 
     print()
-    print(f"✅ AI Auto-Fix complete — {len(findings_with_fixes)} fixes generated")
+    print(f"✅ AI Auto-Fix complete — {len(findings_with_fixes)} fixes generated using {provider}")
 
 if __name__ == "__main__":
     main()

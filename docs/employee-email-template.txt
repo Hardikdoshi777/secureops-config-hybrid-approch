@@ -46,14 +46,15 @@ That's it! The script handles everything automatically:
 • 🌐 Nuclei — fast DAST scanning for exposed configs
 • 🕷️ OWASP ZAP — deep API penetration testing (CI only)
 • 🏗️ Checkov — scans Dockerfiles, Terraform, and CI configs
-• 🤖 Claude AI — automatically generates fix suggestions
+• 🤖 Gemini AI — auto-generates fix suggestions + AI code review on PRs
 
 🚀 How It Works:
 ━━━━━━━━━━━━━━━━
 • On COMMIT: Gitleaks + Semgrep scan your changes (~3 seconds)
 • On PUSH: Trivy scans your dependencies
 • On PR/PUSH to main: Full 7-tool CI pipeline runs (~1 minute)
-• On FAILURE: Claude AI creates a GitHub Issue with specific fixes
+• On FAILURE: Gemini AI creates a GitHub Issue with specific fixes
+• On PR: AI Code Review posts inline comments (like CodeRabbit/SonarQube)
 
 📊 Visibility:
 ━━━━━━━━━━━━━━
@@ -61,11 +62,30 @@ That's it! The script handles everything automatically:
 • GitHub Security tab shows all findings
 • HTML dashboard tracks team enrollment
 
-⚠️ Windows Prerequisites:
-━━━━━━━━━━━━━━━━━━━━━━━━
-• Git for Windows (https://git-scm.com/download/win)
-• Python 3.8+ (https://python.org — check "Add to PATH" during install)
-• PowerShell 5.1+ (built into Windows 10/11)
+⚠️ Windows Notes:
+━━━━━━━━━━━━━━━━
+• The script auto-installs Git + Python if missing (via winget)
+• PowerShell 5.1+ required (built into Windows 10/11)
+• Run PowerShell as Administrator for best results
+
+🧠 AI Code Review (Automatic):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Every PR gets automatic AI review with:
+• Inline comments on problematic lines
+• One-click fix suggestions (click "Apply suggestion")
+• Quality Gate pass/fail
+• 8 categories: Security, Bugs, Quality, Performance, Best Practices, Testing, Architecture, Documentation
+
+💻 IDE Extensions (Optional, Free — Recommended!):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Install these VS Code extensions for real-time scanning in your editor:
+
+    code --install-extension Semgrep.semgrep
+    code --install-extension AquaSecurity.trivy-vulnerability-scanner
+    code --install-extension eamodio.gitlens
+    code --install-extension SonarSource.sonarlint-vscode
+
+IntelliJ/Android Studio: Search "Semgrep" and "SonarLint" in Plugins.
 
 ❓ Need Help?
 ━━━━━━━━━━━━━

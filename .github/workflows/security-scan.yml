@@ -1,7 +1,7 @@
 name: "🛡️ SecurOps Hybrid — Complete Security Pipeline"
-# ✅ Gitleaks + TruffleHog (Secrets) + Semgrep (SAST) + Trivy (SCA)
+# ✅ Gitleaks + TruffleHog (Secrets) + Semgrep (SAST) + CodeQL (Deep SAST) + Trivy (SCA)
 # ✅ Nuclei (Fast DAST) + OWASP ZAP (Deep DAST) + Checkov (IaC)
-# ✅ AI Auto-Fix (Claude) + Dashboard + Enrollment Tracking
+# ✅ AI Code Review + AI Auto-Fix (Gemini/Groq) + Dashboard
 # 🔀 Hybrid: Best of Approach A + Approach B
 
 on:
@@ -381,11 +381,66 @@ jobs:
           retention-days: 30
 
   # ══════════════════════════════════════════════════════════
-  # JOB 8: AI AUTO-FIX — Claude
-  # From: Approach B — now reads ZAP + TruffleHog reports too
+  # JOB 8: CODEQL — Deep SAST (GitHub's Free Taint Analysis)
+  # Equivalent to Checkmarx/Veracode deep data-flow analysis
+  # ══════════════════════════════════════════════════════════
+  codeql-analysis:
+    name: "🔬 CodeQL Deep SAST"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript', 'python']
+        # Add more: 'java-kotlin', 'csharp', 'go', 'ruby', 'swift'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+          # security-and-quality = OWASP + CWE + code quality rules
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ══════════════════════════════════════════════════════════
+  # JOB 9: AI CODE REVIEW — Gemini/Groq (Phase 2)
+  # Runs on PRs only — posts inline comments like CodeRabbit
+  # ══════════════════════════════════════════════════════════
+  ai-code-review:
+    name: "🧠 AI Code Review"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: AI Code Review (Gemini/Groq)
+        env:
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/ai-code-review.py
+        continue-on-error: true
+
+  # ══════════════════════════════════════════════════════════
+  # JOB 10: AI AUTO-FIX — Gemini/Groq
+  # Runs on push to main when scans fail — creates fix Issues
   # ══════════════════════════════════════════════════════════
   ai-auto-fix:
-    name: "🤖 AI Auto-Fix (Claude)"
+    name: "🤖 AI Auto-Fix (Gemini)"
     runs-on: ubuntu-latest
     needs: [secret-scan, secret-scan-verified, sast-scan, sca-scan, dast-scan, dast-zap, iac-scan]
     if: |
@@ -409,10 +464,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install anthropic --quiet
-      - name: Claude AI Auto-Fix
+      - name: AI Auto-Fix (Gemini/Groq)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
@@ -420,8 +475,8 @@ jobs:
         run: python scripts/ai-auto-fix.py
 
   # ══════════════════════════════════════════════════════════
-  # JOB 9: DASHBOARD + ENROLLMENT TRACKING
-  # From: Approach B — updated for 7 tools
+  # JOB 11: DASHBOARD + ENROLLMENT TRACKING
+  # Updated for 8 tools + AI
   # ══════════════════════════════════════════════════════════
   dashboard:
     name: "📊 Dashboard & Enrollment"
@@ -490,8 +545,8 @@ jobs:
             }
 
   # ══════════════════════════════════════════════════════════
-  # JOB 10: SECURITY GATE — final decision, blocks merge
-  # Hybrid: checks ALL 7 tools
+  # JOB 12: SECURITY GATE — final decision, blocks merge
+  # Checks ALL scan tools
   # ══════════════════════════════════════════════════════════
   security-gate:
     name: "🚦 Security Gate"
