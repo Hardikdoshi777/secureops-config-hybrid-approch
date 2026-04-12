@@ -26,9 +26,9 @@ from datetime import datetime
 # ─────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────
-GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "")
-GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
-GITHUB_TOKEN      = os.environ.get("GITHUB_TOKEN")
+GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "").strip()
+GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "").strip()
+GITHUB_TOKEN      = os.environ.get("GITHUB_TOKEN", "").strip()
 REPO              = os.environ.get("REPO", "")
 SHA               = os.environ.get("SHA", "")
 ACTOR             = os.environ.get("ACTOR", "unknown")
@@ -79,7 +79,10 @@ def _call_gemini(prompt, max_tokens):
         }
         req = urllib.request.Request(
             url, data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}, method="POST"
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "SecurOps-AI-AutoFix/1.0"
+            }, method="POST"
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -102,7 +105,9 @@ def _call_groq(prompt, max_tokens):
             url, data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {GROQ_API_KEY}"
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "User-Agent": "SecurOps-AI-AutoFix/1.0",
+                "Accept": "application/json"
             }, method="POST"
         )
         with urllib.request.urlopen(req, timeout=60) as resp:

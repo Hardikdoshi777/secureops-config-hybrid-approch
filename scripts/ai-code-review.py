@@ -130,7 +130,10 @@ def _call_gemini(prompt, system_prompt, max_tokens):
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "SecurOps-AI-Review/1.0"
+            },
             method="POST"
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
@@ -173,7 +176,9 @@ def _call_groq(prompt, system_prompt, max_tokens):
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {GROQ_API_KEY}"
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "User-Agent": "SecurOps-AI-Review/1.0",
+                "Accept": "application/json"
             },
             method="POST"
         )
