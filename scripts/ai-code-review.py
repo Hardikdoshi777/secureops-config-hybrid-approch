@@ -74,21 +74,9 @@ MAX_RETRIES = 3
 RETRY_DELAY = 10  # seconds (Gemini free tier = 15 RPM, need longer backoff)
 
 def call_ai(prompt, system_prompt="", max_tokens=4096):
-    """Call AI provider with retry + automatic fallback: Gemini → Groq → None"""
+    """Call AI provider with retry + automatic fallback: Groq → Gemini → None"""
 
-    # Try Gemini first (with retries)
-    if GOOGLE_AI_API_KEY:
-        for attempt in range(MAX_RETRIES + 1):
-            result = _call_gemini(prompt, system_prompt, max_tokens)
-            if result:
-                return result
-            if attempt < MAX_RETRIES:
-                wait = RETRY_DELAY * (attempt + 1)
-                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
-                time.sleep(wait)
-        print("  ⚠️  Gemini exhausted retries, trying Groq fallback...")
-
-    # Try Groq fallback (with retries)
+    # Try Groq first — primary provider (faster, no daily quota limits)
     if GROQ_API_KEY:
         for attempt in range(MAX_RETRIES + 1):
             result = _call_groq(prompt, system_prompt, max_tokens)
@@ -98,11 +86,23 @@ def call_ai(prompt, system_prompt="", max_tokens=4096):
                 wait = RETRY_DELAY * (attempt + 1)
                 print(f"  ⚠️  Groq attempt {attempt+1} failed, retrying in {wait}s...")
                 time.sleep(wait)
-        print("  ⚠️  Groq also exhausted retries")
+        print("  ⚠️  Groq exhausted retries, trying Gemini fallback...")
+
+    # Try Gemini fallback (with retries)
+    if GOOGLE_AI_API_KEY:
+        for attempt in range(MAX_RETRIES + 1):
+            result = _call_gemini(prompt, system_prompt, max_tokens)
+            if result:
+                return result
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY * (attempt + 1)
+                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
+                time.sleep(wait)
+        print("  ⚠️  Gemini also exhausted retries")
 
     # No provider available
-    if not GOOGLE_AI_API_KEY and not GROQ_API_KEY:
-        print("  ℹ️  No AI API key configured (GOOGLE_AI_API_KEY or GROQ_API_KEY)")
+    if not GROQ_API_KEY and not GOOGLE_AI_API_KEY:
+        print("  ℹ️  No AI API key configured (GROQ_API_KEY or GOOGLE_AI_API_KEY)")
         print("  ℹ️  Skipping AI code review — security scans still active")
     return None
 
@@ -806,7 +806,7 @@ def main():
         print("  ℹ️  Get free key: https://aistudio.google.com/apikey")
         sys.exit(0)
 
-    provider = "Gemini" if GOOGLE_AI_API_KEY else "Groq"
+    provider = "Groq" if GROQ_API_KEY else "Gemini"
     print(f"  ℹ️  AI Provider: {provider}")
     # Debug: show which providers are configured (masked keys)
     if GOOGLE_AI_API_KEY:

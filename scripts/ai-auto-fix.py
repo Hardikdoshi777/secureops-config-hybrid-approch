@@ -43,19 +43,9 @@ MAX_RETRIES = 3
 RETRY_DELAY = 10  # seconds (Gemini free tier = 15 RPM, need longer backoff)
 
 def call_ai(prompt, max_tokens=1024):
-    """Call AI provider with retry + automatic fallback: Gemini → Groq → None"""
+    """Call AI provider with retry + automatic fallback: Groq → Gemini → None"""
 
-    if GOOGLE_AI_API_KEY:
-        for attempt in range(MAX_RETRIES + 1):
-            result = _call_gemini(prompt, max_tokens)
-            if result:
-                return result
-            if attempt < MAX_RETRIES:
-                wait = RETRY_DELAY * (attempt + 1)
-                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
-                time.sleep(wait)
-        print("  ⚠️  Gemini exhausted retries, trying Groq...")
-
+    # Try Groq first — primary provider
     if GROQ_API_KEY:
         for attempt in range(MAX_RETRIES + 1):
             result = _call_groq(prompt, max_tokens)
@@ -64,6 +54,18 @@ def call_ai(prompt, max_tokens=1024):
             if attempt < MAX_RETRIES:
                 wait = RETRY_DELAY * (attempt + 1)
                 print(f"  ⚠️  Groq attempt {attempt+1} failed, retrying in {wait}s...")
+                time.sleep(wait)
+        print("  ⚠️  Groq exhausted retries, trying Gemini...")
+
+    # Gemini fallback
+    if GOOGLE_AI_API_KEY:
+        for attempt in range(MAX_RETRIES + 1):
+            result = _call_gemini(prompt, max_tokens)
+            if result:
+                return result
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY * (attempt + 1)
+                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
                 time.sleep(wait)
 
     return "AI fix generation unavailable — no API key or provider error."
