@@ -394,8 +394,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript-typescript', 'python']
-        # Add more: 'java-kotlin', 'csharp', 'go', 'ruby', 'swift'
+        # Only include languages that exist in your repo
+        # Add 'javascript-typescript' when you have JS/TS files
+        # Add 'java-kotlin' for Java/Kotlin, 'csharp' for C#, 'go' for Go
+        language: ['python']
     steps:
       - uses: actions/checkout@v4
       - name: Initialize CodeQL
