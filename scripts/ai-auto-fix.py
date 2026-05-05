@@ -26,6 +26,7 @@ from datetime import datetime
 # ─────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────
+NVIDIA_API_KEY    = os.environ.get("NVIDIA_API_KEY", "").strip()
 GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "").strip()
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "").strip()
 GITHUB_TOKEN      = os.environ.get("GITHUB_TOKEN", "").strip()
@@ -35,17 +36,29 @@ ACTOR             = os.environ.get("ACTOR", "unknown")
 MAX_FIXES_PER_RUN = 10
 
 # ─────────────────────────────────────────────────────────
-# AI PROVIDER (Gemini → Groq fallback)
+# AI PROVIDER (NVIDIA → Groq → Gemini fallback)
 # ─────────────────────────────────────────────────────────
 import time
 
 MAX_RETRIES = 3
-RETRY_DELAY = 10  # seconds (Gemini free tier = 15 RPM, need longer backoff)
+RETRY_DELAY = 10  # seconds
 
 def call_ai(prompt, max_tokens=1024):
-    """Call AI provider with retry + automatic fallback: Groq → Gemini → None"""
+    """Call AI provider with retry + automatic fallback: NVIDIA → Groq → Gemini → None"""
 
-    # Try Groq first — primary provider
+    # Try NVIDIA first — primary provider (kimi-k2.6)
+    if NVIDIA_API_KEY:
+        for attempt in range(MAX_RETRIES + 1):
+            result = _call_nvidia(prompt, max_tokens)
+            if result:
+                return result
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY * (attempt + 1)
+                print(f"  ⚠️  NVIDIA attempt {attempt+1} failed, retrying in {wait}s...")
+                time.sleep(wait)
+        print("  ⚠️  NVIDIA exhausted retries, trying Groq...")
+
+    # Try Groq fallback
     if GROQ_API_KEY:
         for attempt in range(MAX_RETRIES + 1):
             result = _call_groq(prompt, max_tokens)
@@ -57,7 +70,7 @@ def call_ai(prompt, max_tokens=1024):
                 time.sleep(wait)
         print("  ⚠️  Groq exhausted retries, trying Gemini...")
 
-    # Gemini fallback
+    # Gemini last resort
     if GOOGLE_AI_API_KEY:
         for attempt in range(MAX_RETRIES + 1):
             result = _call_gemini(prompt, max_tokens)
@@ -69,6 +82,33 @@ def call_ai(prompt, max_tokens=1024):
                 time.sleep(wait)
 
     return "AI fix generation unavailable — no API key or provider error."
+
+
+def _call_nvidia(prompt, max_tokens):
+    """Call NVIDIA NIM API (OpenAI-compatible) — moonshotai/kimi-k2.6"""
+    try:
+        url = "https://integrate.api.nvidia.com/v1/chat/completions"
+        payload = {
+            "model": "moonshotai/kimi-k2.6",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2, "max_tokens": max_tokens,
+            "top_p": 1.00, "stream": False
+        }
+        req = urllib.request.Request(
+            url, data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Accept": "application/json",
+                "User-Agent": "SecurOps-AI-AutoFix/1.0"
+            }, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"  ⚠️  NVIDIA error: {e}")
+        return None
 
 
 def _call_gemini(prompt, max_tokens):
