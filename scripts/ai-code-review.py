@@ -38,9 +38,10 @@ from datetime import datetime
 # ─────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────
-GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "").strip()
+GOOGLE_AI_API_KEY = os.environ.get("GOOGLE_AI_API_KEY", "").strip()
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 
 # GitHub context (set by GitHub Actions)
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
@@ -70,25 +71,25 @@ SKIP_PATTERNS = [
 # ─────────────────────────────────────────────────────────
 import time
 
-MAX_RETRIES = 2
-RETRY_DELAY = 3  # seconds
+MAX_RETRIES = 3
+RETRY_DELAY = 10  # seconds (Gemini free tier = 15 RPM, need longer backoff)
 
 def call_ai(prompt, system_prompt="", max_tokens=4096):
-    """Call AI provider with retry + automatic fallback: Gemini → Groq → None"""
+    """Call AI provider with retry + automatic fallback: NVIDIA → Groq → Gemini → None"""
 
-    # Try Gemini first (with retries)
-    if GOOGLE_AI_API_KEY:
+    # Try NVIDIA first — primary provider (kimi-k2.6, most capable)
+    if NVIDIA_API_KEY:
         for attempt in range(MAX_RETRIES + 1):
-            result = _call_gemini(prompt, system_prompt, max_tokens)
+            result = _call_nvidia(prompt, system_prompt, max_tokens)
             if result:
                 return result
             if attempt < MAX_RETRIES:
                 wait = RETRY_DELAY * (attempt + 1)
-                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
+                print(f"  ⚠️  NVIDIA attempt {attempt+1} failed, retrying in {wait}s...")
                 time.sleep(wait)
-        print("  ⚠️  Gemini exhausted retries, trying Groq fallback...")
+        print("  ⚠️  NVIDIA exhausted retries, trying Groq fallback...")
 
-    # Try Groq fallback (with retries)
+    # Try Groq fallback
     if GROQ_API_KEY:
         for attempt in range(MAX_RETRIES + 1):
             result = _call_groq(prompt, system_prompt, max_tokens)
@@ -98,13 +99,71 @@ def call_ai(prompt, system_prompt="", max_tokens=4096):
                 wait = RETRY_DELAY * (attempt + 1)
                 print(f"  ⚠️  Groq attempt {attempt+1} failed, retrying in {wait}s...")
                 time.sleep(wait)
-        print("  ⚠️  Groq also exhausted retries")
+        print("  ⚠️  Groq exhausted retries, trying Gemini fallback...")
+
+    # Try Gemini last resort
+    if GOOGLE_AI_API_KEY:
+        for attempt in range(MAX_RETRIES + 1):
+            result = _call_gemini(prompt, system_prompt, max_tokens)
+            if result:
+                return result
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY * (attempt + 1)
+                print(f"  ⚠️  Gemini attempt {attempt+1} failed, retrying in {wait}s...")
+                time.sleep(wait)
+        print("  ⚠️  Gemini also exhausted retries")
 
     # No provider available
-    if not GOOGLE_AI_API_KEY and not GROQ_API_KEY:
-        print("  ℹ️  No AI API key configured (GOOGLE_AI_API_KEY or GROQ_API_KEY)")
+    if not NVIDIA_API_KEY and not GROQ_API_KEY and not GOOGLE_AI_API_KEY:
+        print("  ℹ️  No AI API key configured (NVIDIA_API_KEY, GROQ_API_KEY, or GOOGLE_AI_API_KEY)")
         print("  ℹ️  Skipping AI code review — security scans still active")
     return None
+
+
+def _call_nvidia(prompt, system_prompt, max_tokens):
+    """Call NVIDIA NIM API (OpenAI-compatible) — moonshotai/kimi-k2.6"""
+    try:
+        url = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": "moonshotai/kimi-k2.6",
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": max_tokens,
+            "top_p": 1.00,
+            "stream": False
+        }
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Accept": "application/json",
+                "User-Agent": "SecurOps-AI-Review/1.0"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        print(f"  ⚠️  NVIDIA API error: {e} — {error_body[:200]}")
+        return None
+    except Exception as e:
+        print(f"  ⚠️  NVIDIA API error: {e}")
+        return None
 
 
 def _call_gemini(prompt, system_prompt, max_tokens):
@@ -130,13 +189,24 @@ def _call_gemini(prompt, system_prompt, max_tokens):
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "SecurOps-AI-Review/1.0"
+            },
             method="POST"
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             return text
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        print(f"  ⚠️  Gemini API error: {e} — {error_body[:200]}")
+        return None
     except Exception as e:
         print(f"  ⚠️  Gemini API error: {e}")
         return None
@@ -165,13 +235,23 @@ def _call_groq(prompt, system_prompt, max_tokens):
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {GROQ_API_KEY}"
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "User-Agent": "SecurOps-AI-Review/1.0",
+                "Accept": "application/json"
             },
             method="POST"
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        print(f"  ⚠️  Groq API error: {e} — {error_body[:200]}")
+        return None
     except Exception as e:
         print(f"  ⚠️  Groq API error: {e}")
         return None
@@ -488,12 +568,13 @@ RULES FOR YOUR REVIEW
 2. Be specific: reference exact line numbers, variable names, and method names
 3. Provide a concrete fix suggestion for EVERY finding (show corrected code when possible)
 4. Use the language/framework-appropriate conventions and idioms
-5. Don't be overly nitpicky — focus on issues that genuinely matter for production quality
-6. If the code looks good, say so! Not every PR needs findings. Give clean code a score of 9-10
-7. Prioritize: Security > Bugs > Performance > Quality > Best Practices > Documentation
-8. For each finding, explain WHY it's a problem (impact) not just WHAT is wrong
-9. Consider the context: a prototype script has different standards than a production API
-10. Return valid JSON only, no markdown wrapping or extra text"""
+5. Focus on issues that genuinely matter for production quality
+6. ALWAYS flag: hardcoded credentials/passwords/API keys, SQL injection, command injection, insecure deserialization — even in small files or test scripts. These are NEVER acceptable.
+7. If the code is genuinely clean with no issues, give a score of 9-10. But do NOT ignore real security issues
+8. Prioritize: Security > Bugs > Performance > Quality > Best Practices > Documentation
+9. For each finding, explain WHY it's a problem (impact) not just WHAT is wrong
+10. Consider context for code quality/style, but NEVER downgrade security findings based on context
+11. Return valid JSON only, no markdown wrapping or extra text"""
 
 
 def review_file(file_data, pr_context):
@@ -778,14 +859,21 @@ def main():
         print("  ⚠️  GITHUB_TOKEN not set — skipping AI code review")
         sys.exit(0)
 
-    if not GOOGLE_AI_API_KEY and not GROQ_API_KEY:
+    if not NVIDIA_API_KEY and not GROQ_API_KEY and not GOOGLE_AI_API_KEY:
         print("  ⚠️  No AI API key configured")
-        print("  ℹ️  Set GOOGLE_AI_API_KEY or GROQ_API_KEY in repo secrets")
-        print("  ℹ️  Get free key: https://aistudio.google.com/apikey")
+        print("  ℹ️  Set NVIDIA_API_KEY, GROQ_API_KEY, or GOOGLE_AI_API_KEY in repo secrets")
+        print("  ℹ️  Get free key: https://build.nvidia.com/explore/discover")
         sys.exit(0)
 
-    provider = "Gemini" if GOOGLE_AI_API_KEY else "Groq"
+    provider = "NVIDIA" if NVIDIA_API_KEY else ("Groq" if GROQ_API_KEY else "Gemini")
     print(f"  ℹ️  AI Provider: {provider}")
+    # Debug: show which providers are configured (masked keys)
+    if NVIDIA_API_KEY:
+        print(f"  ℹ️  NVIDIA key: {NVIDIA_API_KEY[:8]}...{NVIDIA_API_KEY[-4:]} (len={len(NVIDIA_API_KEY)})")
+    if GROQ_API_KEY:
+        print(f"  ℹ️  Groq key: {GROQ_API_KEY[:8]}...{GROQ_API_KEY[-4:]} (len={len(GROQ_API_KEY)})")
+    if GOOGLE_AI_API_KEY:
+        print(f"  ℹ️  Gemini key: {GOOGLE_AI_API_KEY[:8]}...{GOOGLE_AI_API_KEY[-4:]} (len={len(GOOGLE_AI_API_KEY)})")
 
     # Get PR info
     pr_info = get_pr_info()
