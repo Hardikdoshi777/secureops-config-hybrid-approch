@@ -1,4 +1,8 @@
 rules:
+  # ═════════════════════════════════════════════════════════
+  # MOBILE STACK — ANDROID
+  # ═════════════════════════════════════════════════════════
+
   # ─────────────────────────────────────────────────────────
   # ANDROID — Insecure File Storage
   # ─────────────────────────────────────────────────────────
@@ -30,6 +34,10 @@ rules:
       category: security
       owasp: "M3: Insecure Communication"
 
+  # ═════════════════════════════════════════════════════════
+  # MOBILE STACK — iOS / SWIFT
+  # ═════════════════════════════════════════════════════════
+
   # ─────────────────────────────────────────────────────────
   # iOS — NSLog Exposure
   # ─────────────────────────────────────────────────────────
@@ -44,6 +52,61 @@ rules:
       category: security
       owasp: "M9: Reverse Engineering"
       fix: "Use os_log(.info, \"Message: %{private}@\", value)"
+
+  # ─────────────────────────────────────────────────────────
+  # iOS — Insecure Keychain Accessibility
+  # ─────────────────────────────────────────────────────────
+  - id: ios-insecure-keychain-access
+    patterns:
+      - pattern: kSecAttrAccessibleAlways
+    message: >
+      Insecure Keychain accessibility level (kSecAttrAccessibleAlways).
+      Data is accessible even when the device is locked.
+      Use kSecAttrAccessibleWhenUnlocked instead.
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "M2: Insecure Data Storage"
+      cwe: "CWE-922: Insecure Storage of Sensitive Information"
+      fix: "Replace kSecAttrAccessibleAlways with kSecAttrAccessibleWhenUnlocked"
+
+  # ─────────────────────────────────────────────────────────
+  # iOS — Weak Biometric Authentication
+  # ─────────────────────────────────────────────────────────
+  - id: ios-weak-biometric-policy
+    patterns:
+      - pattern: LAContext().evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, ...)
+    message: >
+      Using biometric authentication without fallback logic.
+      Ensure proper error handling for lockout scenarios.
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "M1: Improper Platform Usage"
+      fix: "Add error handling for LAError.biometryLockout and LAError.biometryNotAvailable"
+
+  # ─────────────────────────────────────────────────────────
+  # iOS — WebView JavaScript Enabled
+  # ─────────────────────────────────────────────────────────
+  - id: ios-webview-javascript-enabled
+    patterns:
+      - pattern: $CONFIG.javaScriptEnabled = true
+    message: >
+      JavaScript is explicitly enabled in WKWebView.
+      Ensure you only load trusted content to prevent XSS.
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "M7: Client Code Quality"
+      cwe: "CWE-79: Cross-site Scripting (XSS)"
+      fix: "Only enable JavaScript for trusted URLs, or use WKContentRuleList to block inline scripts"
+
+  # ═════════════════════════════════════════════════════════
+  # MOBILE STACK — FLUTTER / DART
+  # ═════════════════════════════════════════════════════════
 
   # ─────────────────────────────────────────────────────────
   # FLUTTER / DART — Insecure Random
@@ -75,3 +138,114 @@ rules:
       category: security
       owasp: "M3: Insecure Communication"
       fix: "Change http:// to https://"
+
+  # ═════════════════════════════════════════════════════════
+  # ENTERPRISE STACK — .NET / C#
+  # ═════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────
+  # .NET — Insecure BinaryFormatter Deserialization
+  # ─────────────────────────────────────────────────────────
+  - id: dotnet-insecure-deserialization
+    patterns:
+      - pattern: new BinaryFormatter().Deserialize(...)
+    message: >
+      Insecure BinaryFormatter deserialization detected.
+      This can lead to Remote Code Execution (RCE).
+      Use JSON.NET or System.Text.Json for secure serialization.
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A8: Insecure Deserialization"
+      fix: "Replace BinaryFormatter with JsonConvert.DeserializeObject<T>() or System.Text.Json"
+
+  # ─────────────────────────────────────────────────────────
+  # .NET — Hardcoded Connection String
+  # ─────────────────────────────────────────────────────────
+  - id: dotnet-hardcoded-connection-string
+    pattern-regex: "Server=[^;]+;Database=[^;]+;User Id=[^;]+;Password=[^;]+"
+    message: >
+      Hardcoded connection string with credentials detected.
+      Store credentials in User Secrets, Azure Key Vault, or Environment Variables.
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A7: Identification and Authentication Failures"
+      fix: "Use IConfiguration with User Secrets or environment variables"
+
+  # ═════════════════════════════════════════════════════════
+  # WEB STACK — PHP
+  # ═════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────
+  # PHP — eval() Remote Code Execution
+  # ─────────────────────────────────────────────────────────
+  - id: php-insecure-eval
+    patterns:
+      - pattern: eval(...)
+    message: >
+      Use of eval() detected. This can lead to Remote Code Execution (RCE).
+      Replace with safer alternatives like include or pre-compiled templates.
+    languages: [php]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-95: Eval Injection"
+      owasp: "A3: Injection"
+      fix: "Remove eval() and use pre-compiled templates or include()"
+
+  # ─────────────────────────────────────────────────────────
+  # PHP — Direct Output Injection (XSS)
+  # ─────────────────────────────────────────────────────────
+  - id: php-direct-output-injection
+    patterns:
+      - pattern: echo $_GET[...]
+    message: >
+      Direct output of user input detected. This is a Cross-Site Scripting (XSS) vulnerability.
+      Always sanitize output with htmlspecialchars().
+    languages: [php]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting (XSS)"
+      owasp: "A3: Injection"
+      fix: "Use echo htmlspecialchars($_GET['param'], ENT_QUOTES, 'UTF-8')"
+
+  # ═════════════════════════════════════════════════════════
+  # SHARED — ALL LANGUAGES
+  # ═════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────
+  # Hardcoded Internal / Staging / Dev API Endpoints
+  # ─────────────────────────────────────────────────────────
+  - id: hardcoded-api-endpoint
+    pattern-regex: "https?://(api\\.)?(staging|internal|dev|local|test|uat|qa|sandbox)[.-]"
+    message: >
+      Hardcoded staging/internal/dev API endpoint found.
+      This must be replaced by environment variables before shipping to production.
+    languages: [java, kotlin, swift, dart, csharp, php, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      fix: "Use environment variables or BuildConfig/Info.plist for API endpoints"
+
+  # ─────────────────────────────────────────────────────────
+  # Hardcoded Secrets / API Keys
+  # ─────────────────────────────────────────────────────────
+  - id: hardcoded-secret-key
+    pattern-regex: "(?i)(api_key|apiKey|secret|token)\\s*=\\s*\"[^\"]+\""
+    message: >
+      Hardcoded secret or API key found.
+      This must be stored in a secure vault or environment variable.
+    languages: [dart, java, kotlin, swift, csharp, php, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A7: Identification and Authentication Failures"
+      fix: "Move secrets to a vault (e.g., Azure Key Vault, AWS Secrets Manager) or environment variables"
