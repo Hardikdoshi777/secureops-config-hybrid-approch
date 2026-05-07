@@ -139,6 +139,8 @@ def _call_nvidia(prompt, system_prompt, max_tokens):
             "stream": False
         }
 
+        if not url.startswith("https://"):
+            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -186,6 +188,8 @@ def _call_gemini(prompt, system_prompt, max_tokens):
             }
         }
 
+        if not url.startswith("https://"):
+            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -230,6 +234,8 @@ def _call_groq(prompt, system_prompt, max_tokens):
             "response_format": {"type": "json_object"}
         }
 
+        if not url.startswith("https://"):
+            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -268,6 +274,8 @@ def github_api(endpoint, method="GET", data=None):
         "X-GitHub-Api-Version": "2022-11-28"
     }
     body = json.dumps(data).encode("utf-8") if data else None
+    if not url.startswith("https://"):
+        raise ValueError(f"Only HTTPS URLs are allowed: {url}")
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -311,6 +319,8 @@ def get_pr_diff(pr_number):
         "Accept": "application/vnd.github.v3.diff",
         "X-GitHub-Api-Version": "2022-11-28"
     }
+    if not url.startswith("https://"):
+        raise ValueError(f"Only HTTPS URLs are allowed: {url}")
     req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:

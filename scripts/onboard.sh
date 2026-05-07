@@ -127,7 +127,13 @@ step "2/5" "Installing security tools..."
 install_mac() {
   if ! command -v brew &>/dev/null; then
     warn "Installing Homebrew first..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    local brew_installer="/tmp/brew_install_$$.sh"
+    curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$brew_installer"
+    if [ ! -f "$brew_installer" ]; then
+      err "Failed to download Homebrew installer"
+    fi
+    /bin/bash "$brew_installer"
+    rm -f "$brew_installer"
     eval "$($BREW_PREFIX/bin/brew shellenv)"
     echo "eval \"\$($BREW_PREFIX/bin/brew shellenv)\"" >> ~/.zprofile
   fi
