@@ -94,8 +94,6 @@ def _call_nvidia(prompt, max_tokens):
             "temperature": 0.2, "max_tokens": max_tokens,
             "top_p": 1.00, "stream": False
         }
-        if not url.startswith("https://"):
-            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         req = urllib.request.Request(
             url, data=json.dumps(payload).encode("utf-8"),
             headers={
@@ -121,8 +119,6 @@ def _call_gemini(prompt, max_tokens):
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.2, "maxOutputTokens": max_tokens}
         }
-        if not url.startswith("https://"):
-            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         req = urllib.request.Request(
             url, data=json.dumps(payload).encode("utf-8"),
             headers={
@@ -147,8 +143,6 @@ def _call_groq(prompt, max_tokens):
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.2, "max_tokens": max_tokens
         }
-        if not url.startswith("https://"):
-            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         req = urllib.request.Request(
             url, data=json.dumps(payload).encode("utf-8"),
             headers={
@@ -393,8 +387,6 @@ def create_github_issue(findings_with_fixes):
         }).encode()
 
         github_url = f"https://api.github.com/repos/{REPO}/issues"
-        if not github_url.startswith("https://"):
-            raise ValueError(f"Only HTTPS URLs are allowed: {github_url}")
         req = urllib.request.Request(
             github_url,
             data=issue_data,
