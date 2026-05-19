@@ -682,26 +682,40 @@ def generate_pr_summary(all_findings, files_reviewed, pr_context):
         "architecture": "🏗️", "documentation": "📝"
     }
 
+    # Group categories into SonarQube equivalents
+    sonar_bugs = category_counts.get("bug", 0) + category_counts.get("testing", 0)
+    sonar_vulns = category_counts.get("security", 0)
+    sonar_smells = category_counts.get("quality", 0) + category_counts.get("performance", 0) + category_counts.get("best_practice", 0) + category_counts.get("architecture", 0) + category_counts.get("documentation", 0)
+
+    bug_rating = "A" if sonar_bugs == 0 else "B" if sonar_bugs < 3 else "C" if sonar_bugs < 10 else "E"
+    vuln_rating = "A" if sonar_vulns == 0 else "D" if severity_counts["medium"] > 0 else "E" if (has_high or has_critical) else "A"
+    smell_rating = "A" if sonar_smells == 0 else "B" if sonar_smells < 5 else "C" if sonar_smells < 15 else "D"
+
     # Build summary markdown
-    summary = f"""## 🤖 SecurOps AI Code Review
+    summary = f"""## 🤖 SecurOps AI Code Review (SonarQube Analysis)
 
 ### Quality Gate: {gate}
-{gate_reason}
+> {gate_reason}
 
-### 📊 Summary
-| Metric | Value |
-|--------|-------|
-| Files reviewed | {files_reviewed} |
-| Total findings | {total} |
-| 🔴 Critical | {severity_counts['critical']} |
-| 🟠 High | {severity_counts['high']} |
-| 🟡 Medium | {severity_counts['medium']} |
-| 🔵 Low | {severity_counts['low']} |
+### 📊 SonarQube Metrics Summary
+| Metric | Count | Rating |
+|--------|-------|--------|
+| **🐛 Bugs & Reliability** | {sonar_bugs} | {bug_rating} |
+| **🔒 Vulnerabilities** | {sonar_vulns} | {vuln_rating} |
+| **🧹 Code Smells & Debt** | {sonar_smells} | {smell_rating} |
 
 """
 
     if category_counts:
-        summary += "### 📋 Findings by Category\n"
+        # Generate Mermaid Pie Chart
+        summary += "### 📈 Findings Distribution\n"
+        summary += "```mermaid\npie title Findings by Category\n"
+        for cat, count in category_counts.items():
+            label = cat.replace("_", " ").title()
+            summary += f'  "{label}" : {count}\n'
+        summary += "```\n\n"
+
+        summary += "### 📋 Breakdown by Type\n"
         summary += "| Category | Count |\n|----------|-------|\n"
         for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
             emoji = cat_emoji.get(cat, "📌")
@@ -710,7 +724,7 @@ def generate_pr_summary(all_findings, files_reviewed, pr_context):
         summary += "\n"
 
     if all_findings:
-        summary += "### 🔍 Top Findings\n"
+        summary += "### 🔍 Top Findings (Requires Action)\n"
         # Show top 10 most severe findings
         sorted_findings = sorted(all_findings,
             key=lambda x: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(x.get("severity"), 4))
@@ -727,8 +741,8 @@ def generate_pr_summary(all_findings, files_reviewed, pr_context):
 
     summary += f"""
 ---
-<sub>🤖 Powered by SecurOps AI (Gemini/Groq) • {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}</sub>
-<sub>📊 This review covers: Security • Bugs • Code Quality • Performance • Best Practices • Testing • Architecture • Documentation</sub>
+<sub>🤖 Powered by SecurOps AI (NVIDIA/Groq/Gemini) • {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}</sub>
+<sub>📊 This review acts as a CodeRabbit + SonarQube equivalent covering: Security • Bugs • Code Quality • Performance • Best Practices • Testing • Architecture</sub>
 """
 
     return summary, gate

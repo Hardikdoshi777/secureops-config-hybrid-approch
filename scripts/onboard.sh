@@ -4,7 +4,8 @@
 #  File: scripts/onboard.sh
 #
 #  Usage (remote — from ANY project repo):
-#    bash <(curl -s https://raw.githubusercontent.com/YOUR_ORG/secureops-config-hybrid-approch/main/scripts/onboard.sh)
+#    curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/secureops-config-hybrid-approch/main/scripts/onboard.sh -o /tmp/secureops_onboard.sh
+#    bash /tmp/secureops_onboard.sh && rm /tmp/secureops_onboard.sh
 #
 #  What it does:
 #    1. Detects your OS (macOS Intel/M1, Linux, Windows Git Bash)
@@ -363,5 +364,6 @@ echo "    Email:  ${SUPPORT_EMAIL}"
 echo ""
 echo "  To add SecurOps to ANOTHER project:"
 echo "    cd /path/to/other-project"
-echo "    bash <(curl -s ${BASE_URL}/scripts/onboard.sh)"
+echo "    curl -fsSL ${BASE_URL}/scripts/onboard.sh -o /tmp/secureops_onboard.sh"
+echo "    bash /tmp/secureops_onboard.sh && rm /tmp/secureops_onboard.sh"
 echo ""

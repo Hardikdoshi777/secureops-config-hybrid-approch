@@ -11,13 +11,27 @@ Merges Approach A (TruffleHog, OWASP ZAP, mobile SAST) with Approach B (Gitleaks
 ### 🍎 Mac / Linux
 ```bash
 cd /path/to/your-project
-bash <(curl -s https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard.sh)
+curl -fsSL https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard.sh -o /tmp/secureops_onboard.sh
+bash /tmp/secureops_onboard.sh
+rm /tmp/secureops_onboard.sh
+```
+
+**One-liner:**
+```bash
+cd /path/to/your-project && curl -fsSL https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard.sh -o /tmp/secureops_onboard.sh && bash /tmp/secureops_onboard.sh && rm /tmp/secureops_onboard.sh
 ```
 
 ### 🪟 Windows (PowerShell)
 ```powershell
 cd C:\path\to\your-project
-irm https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard_windows.ps1 | iex
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard_windows.ps1" -OutFile "$env:TEMP\secureops_onboard.ps1"
+PowerShell -ExecutionPolicy Bypass -File "$env:TEMP\secureops_onboard.ps1"
+Remove-Item "$env:TEMP\secureops_onboard.ps1"
+```
+
+**One-liner:**
+```powershell
+cd C:\path\to\your-project; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Hardikdoshi777/secureops-config-hybrid-approch/main/scripts/onboard_windows.ps1" -OutFile "$env:TEMP\secureops_onboard.ps1"; PowerShell -ExecutionPolicy Bypass -File "$env:TEMP\secureops_onboard.ps1"; Remove-Item "$env:TEMP\secureops_onboard.ps1"
 ```
 
 This single command:
@@ -41,8 +55,8 @@ This single command:
 | 🌐 DAST | **Nuclei** | Fast config/exposure scanning | CI pipeline |
 | 🕷️ DAST | **OWASP ZAP** | Deep API penetration testing | CI (optional) |
 | 🏗️ IaC | **Checkov** | Terraform, Dockerfile, K8s, GHA misconfigs | CI pipeline |
-| 🤖 AI Fix | **Gemini AI** | Auto-generates fixes + creates GitHub Issues | On failure |
-| 🧠 AI Review | **Gemini AI** | PR inline comments with one-click fixes | On PR |
+| 🤖 AI Fix | **NVIDIA/Groq/Gemini** | Auto-generates fixes + creates GitHub Issues (3-provider fallback) | On failure |
+| 🧠 AI Review | **NVIDIA/Groq/Gemini** | PR inline comments with one-click fixes (NVIDIA kimi-k2.6 primary) | On PR |
 
 ---
 
@@ -109,8 +123,9 @@ secureops-config-hybrid-approch/
 | Secret | Purpose | Required |
 |--------|---------|----------|
 | `GITHUB_TOKEN` | Auto-provided | ✅ Auto |
-| `GOOGLE_AI_API_KEY` | Gemini AI (code review + auto-fix) | 🟡 Recommended |
-| `GROQ_API_KEY` | Groq AI (fallback provider) | ⚪ Optional |
+| `NVIDIA_API_KEY` | NVIDIA NIM AI — primary provider (kimi-k2.6) | 🟡 Recommended |
+| `GROQ_API_KEY` | Groq AI — fallback provider (llama-3.3-70b) | 🟡 Recommended |
+| `GOOGLE_AI_API_KEY` | Gemini AI — last resort (gemini-2.0-flash) | ⚪ Optional |
 | `TARGET_URL` | ZAP/Nuclei URL target | 🟡 Optional |
 
 GitHub Variables:

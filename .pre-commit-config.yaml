@@ -36,9 +36,17 @@ repos:
           - --config=auto
           - --config=p/owasp-top-ten
           - --config=p/security-audit
+          - --config=p/cwe-top-25
+          - --config=p/bugs
+          - --config=p/maintainability
+          - --config=p/secrets
           - --config=semgrep-mobile.yml
           - --severity=ERROR
           - --quiet
+          - -j
+          - "1"
+          - --max-memory
+          - "2048"
         pass_filenames: false
         stages: [pre-commit]
 
