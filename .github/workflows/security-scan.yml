@@ -111,6 +111,7 @@ jobs:
         run: |
           semgrep scan --config=auto --config=p/owasp-top-ten \
             --config=p/security-audit --config=p/cwe-top-25 \
+            --config=p/bugs --config=p/maintainability --config=p/secrets \
             --config=semgrep-mobile.yml \
             --exclude=.gitleaks.toml \
             --sarif --output=semgrep.sarif \
@@ -119,6 +120,7 @@ jobs:
         run: |
           semgrep scan --config=auto --config=p/owasp-top-ten \
             --config=p/security-audit --config=p/cwe-top-25 \
+            --config=p/bugs --config=p/maintainability --config=p/secrets \
             --config=semgrep-mobile.yml \
             --exclude=.gitleaks.toml \
             --json --output=semgrep.json \
@@ -185,6 +187,25 @@ jobs:
           name: report-sca
           path: trivy.*
           if-no-files-found: ignore
+          retention-days: 30
+
+  # ══════════════════════════════════════════════════════════
+  # JOB 4.5: SBOM Generation (Software Bill of Materials)
+  # Enterprise Requirement: SOC2 / ISO 27001
+  # ══════════════════════════════════════════════════════════
+  sbom-generate:
+    name: "📊 SBOM (Syft)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft . -o cyclonedx-json > sbom.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
           retention-days: 30
 
   # ══════════════════════════════════════════════════════════
